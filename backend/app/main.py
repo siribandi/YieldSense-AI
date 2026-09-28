@@ -581,6 +581,7 @@ def list_admin_users(
         ))
     return out
 
+@app.get("/api/admin/farmers/report", tags=["Admin"])
 @app.get("/api/admin/farmers/report/pdf", tags=["Admin"])
 def download_farmer_report_pdf(
     admin_user: User = Depends(get_admin_user),
@@ -593,7 +594,7 @@ def download_farmer_report_pdf(
     """
     try:
         pdf_bytes = report_service.generate_farmer_records_pdf(db=db)
-        filename = f"YieldSense_AI_Farmer_Report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
+        filename = "YieldSense_AI_Farmer_Report.pdf"
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",

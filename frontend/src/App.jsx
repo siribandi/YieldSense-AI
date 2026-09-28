@@ -113,7 +113,7 @@ const Layout = ({ children }) => {
   const menuItems = isAdmin
     ? [
         { name: 'Admin Dashboard', path: '/admin', icon: LayoutDashboard },
-        { name: 'User Management', path: '/admin/users', icon: Users },
+        { name: 'Farmer Records', path: '/admin/farmers', icon: Users },
         { name: 'Agricultural Analytics', path: '/analytics', icon: TrendingUp },
         { name: 'Predict Yield', path: '/predict', icon: BrainCircuit },
         { name: 'All Farms', path: '/farms', icon: Landmark },
@@ -154,7 +154,8 @@ const Layout = ({ children }) => {
             const Icon = item.icon;
             const isActive =
               location.pathname === item.path ||
-              (item.path === '/admin' && location.pathname === '/' && isAdmin);
+              (item.path === '/admin' && location.pathname === '/' && isAdmin) ||
+              (item.path === '/admin/farmers' && location.pathname === '/admin/users');
 
             return (
               <Link
@@ -336,6 +337,17 @@ export default function App() {
 
           <Route
             path="/admin/users"
+            element={
+              <AdminRoute>
+                <Layout>
+                  <AdminUsers />
+                </Layout>
+              </AdminRoute>
+            }
+          />
+
+          <Route
+            path="/admin/farmers"
             element={
               <AdminRoute>
                 <Layout>

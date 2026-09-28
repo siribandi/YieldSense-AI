@@ -47,8 +47,8 @@ export default function AdminUsers() {
   const handleDownloadReport = async () => {
     try {
       setDownloading(true);
-      setDownloadMsg(null);
-      const res = await api.get('/admin/farmers/report/pdf', {
+      setDownloadMsg({ type: 'info', text: 'Generating report...' });
+      const res = await api.get('/api/admin/farmers/report', {
         responseType: 'blob'
       });
 
@@ -57,18 +57,17 @@ export default function AdminUsers() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const dateStr = new Date().toISOString().slice(0, 10);
-      link.setAttribute('download', `YieldSense_AI_Farmer_Report_${dateStr}.pdf`);
+      link.setAttribute('download', 'YieldSense_AI_Farmer_Report.pdf');
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      setDownloadMsg({ type: 'success', text: 'Farmer Report PDF downloaded successfully!' });
-      setTimeout(() => setDownloadMsg(null), 5000);
+      setDownloadMsg({ type: 'success', text: 'Report downloaded successfully.' });
+      setTimeout(() => setDownloadMsg(null), 6000);
     } catch (err) {
       console.error('Failed to download PDF report:', err);
-      setDownloadMsg({ type: 'error', text: 'Failed to generate PDF report. Please try again.' });
+      setDownloadMsg({ type: 'error', text: 'Unable to generate report.' });
     } finally {
       setDownloading(false);
     }
@@ -114,13 +113,14 @@ export default function AdminUsers() {
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button
+            id="download-farmer-report-btn"
             onClick={handleDownloadReport}
             disabled={downloading}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 active:scale-95 text-white rounded-2xl text-xs font-bold shadow-md shadow-brand-600/20 transition-all disabled:opacity-50"
-            title="Download formatted PDF Audit Report"
+            title="Download formatted PDF Farmer Report"
           >
             <FileDown size={16} className={downloading ? 'animate-bounce' : ''} />
-            <span>{downloading ? 'Generating PDF...' : 'Download Report'}</span>
+            <span>{downloading ? 'Generating report...' : 'Download Report'}</span>
           </button>
 
           <button
@@ -138,13 +138,22 @@ export default function AdminUsers() {
       {/* Download Alert Notification */}
       {downloadMsg && (
         <div
+          id="report-status-alert"
           className={`p-4 rounded-2xl border flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${
             downloadMsg.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : downloadMsg.type === 'info'
+              ? 'bg-blue-50 text-blue-800 border-blue-200'
               : 'bg-red-50 text-red-800 border-red-200'
           }`}
         >
-          {downloadMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+          {downloadMsg.type === 'success' ? (
+            <CheckCircle2 size={16} />
+          ) : downloadMsg.type === 'info' ? (
+            <RefreshCw size={16} className="animate-spin" />
+          ) : (
+            <AlertCircle size={16} />
+          )}
           <span>{downloadMsg.text}</span>
         </div>
       )}

@@ -169,61 +169,82 @@ class ReportService:
         story = []
 
         # --- Document Header ---
-        story.append(Paragraph("YieldSense AI -- Farmer Records & System Intelligence Report", title_style))
-        gen_time = datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")
-        story.append(Paragraph(f"Official Administrator Audit Report | Generated on: <b>{gen_time}</b>", subtitle_style))
+        main_brand_style = ParagraphStyle(
+            'BrandTitle',
+            parent=styles['Heading1'],
+            fontName='Helvetica-Bold',
+            fontSize=22,
+            leading=26,
+            textColor=colors.HexColor('#1b5e20'),
+            spaceAfter=2
+        )
+        report_title_style = ParagraphStyle(
+            'ReportTitle',
+            parent=styles['Heading2'],
+            fontName='Helvetica-Bold',
+            fontSize=14,
+            leading=18,
+            textColor=colors.HexColor('#1e293b'),
+            spaceAfter=3
+        )
+        date_meta_style = ParagraphStyle(
+            'DateMeta',
+            parent=styles['Normal'],
+            fontName='Helvetica-Oblique',
+            fontSize=9,
+            leading=13,
+            textColor=colors.HexColor('#64748b'),
+            spaceAfter=8
+        )
+
+        story.append(Paragraph("YIELDSENSE AI", main_brand_style))
+        story.append(Paragraph("Farmer Records Report", report_title_style))
+        gen_time = datetime.now(timezone.utc).strftime("%B %d, %Y (%H:%M UTC)")
+        story.append(Paragraph(f"Generated Date: <b>{gen_time}</b>", date_meta_style))
         story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#2e7d32"), spaceAfter=12))
 
-        # --- Section 1: Executive KPI Summary Box ---
-        story.append(Paragraph("1. Executive Platform Telemetry", section_style))
+        # --- Section 1: Summary ---
+        story.append(Paragraph("Summary", section_style))
 
         kpi_data = [
             [
-                Paragraph("<b>Total Registered Users</b>", table_cell_bold),
-                Paragraph(f"<b>{total_users}</b> ({total_farmers} Farmers, {total_admins} Admins)", table_cell_style),
-                Paragraph("<b>Total Farm Fields</b>", table_cell_bold),
-                Paragraph(f"<b>{total_farms}</b> registered farms", table_cell_style)
+                Paragraph("<b>Total Farmers</b>", table_cell_bold),
+                Paragraph(f"<b>{total_farmers}</b> registered accounts", table_cell_style),
+                Paragraph("<b>Total Farms</b>", table_cell_bold),
+                Paragraph(f"<b>{total_farms}</b> registered farm fields", table_cell_style)
             ],
             [
-                Paragraph("<b>Total Logged Crops</b>", table_cell_bold),
-                Paragraph(f"<b>{total_crops}</b> crop entries", table_cell_style),
-                Paragraph("<b>Yield Predictions Run</b>", table_cell_bold),
-                Paragraph(f"<b>{total_predictions}</b> ML forecasts", table_cell_style)
-            ],
-            [
-                Paragraph("<b>Avg Predicted Yield</b>", table_cell_bold),
-                Paragraph(f"<b>{avg_yield:,.1f}</b> kg / acre", table_cell_style),
-                Paragraph("<b>Active ML Model</b>", table_cell_bold),
-                Paragraph("<b>Linear Regression v2.0.0</b> (R2: 0.0029, MAE: 4,273)", table_cell_style)
+                Paragraph("<b>Total Crops</b>", table_cell_bold),
+                Paragraph(f"<b>{total_crops}</b> active crop entries", table_cell_style),
+                Paragraph("<b>Total Predictions</b>", table_cell_bold),
+                Paragraph(f"<b>{total_predictions}</b> ML yield forecasts", table_cell_style)
             ]
         ]
-        kpi_table = Table(kpi_data, colWidths=[120, 145, 120, 145])
+        kpi_table = Table(kpi_data, colWidths=[120, 146, 120, 146])
         kpi_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
         story.append(kpi_table)
-        story.append(Spacer(1, 12))
+        story.append(Spacer(1, 14))
 
-        # --- Section 2: Complete Farmer & User Directory ---
-        story.append(Paragraph("2. Farmer & User Master Directory", section_style))
+        # --- Section 2: Farmer Records Table ---
+        story.append(Paragraph("Farmer Records", section_style))
 
         user_table_data = [
             [
-                Paragraph("ID", table_hdr_style),
-                Paragraph("Farmer / User Name", table_hdr_style),
-                Paragraph("Email Address", table_hdr_style),
+                Paragraph("Farmer Name", table_hdr_style),
+                Paragraph("Email", table_hdr_style),
                 Paragraph("Role", table_hdr_style),
                 Paragraph("Farms", table_hdr_style),
                 Paragraph("Crops", table_hdr_style),
                 Paragraph("Predictions", table_hdr_style),
                 Paragraph("Registration Date", table_hdr_style),
-                Paragraph("Status", table_hdr_style),
             ]
         ]
 
@@ -231,11 +252,9 @@ class ReportService:
             u_farms = len(u.farms)
             u_crops = sum(len(f.crops) for f in u.farms)
             u_preds = len(u.predictions)
-            status_text = "Active" if (u_preds > 0 or u_farms > 0) else "Registered"
             reg_date = u.created_at.strftime("%Y-%m-%d") if u.created_at else "N/A"
 
             user_table_data.append([
-                Paragraph(f"#{u.id}", table_cell_style),
                 Paragraph(f"<b>{u.name}</b>", table_cell_style),
                 Paragraph(u.email, table_cell_style),
                 Paragraph(u.role, badge_style if u.role == "Farmer" else table_cell_bold),
@@ -243,12 +262,12 @@ class ReportService:
                 Paragraph(str(u_crops), table_cell_style),
                 Paragraph(str(u_preds), table_cell_style),
                 Paragraph(reg_date, table_cell_style),
-                Paragraph(status_text, table_cell_bold if status_text == "Active" else table_cell_style),
             ])
 
         user_table = Table(
             user_table_data,
-            colWidths=[24, 95, 125, 52, 32, 32, 54, 66, 52]
+            colWidths=[105, 135, 68, 38, 38, 58, 90],
+            repeatRows=1
         )
         user_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1b5e20')),
@@ -256,13 +275,13 @@ class ReportService:
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f1f5f9')]),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ('LEFTPADDING', (0, 0), (-1, -1), 4),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 4.5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4.5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
         ]))
         story.append(user_table)
-        story.append(Spacer(1, 14))
+        story.append(Spacer(1, 16))
 
         # --- Section 3: Detailed Farmer Holdings & Prediction Logs ---
         story.append(Paragraph("3. Detailed Farmer Holdings & Recent Yield Forecasts", section_style))

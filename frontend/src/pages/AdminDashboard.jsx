@@ -63,7 +63,7 @@ export default function AdminDashboard() {
 
           <div className="flex items-center gap-3">
             <Link
-              to="/admin/users"
+              to="/admin/farmers"
               className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-2xl text-xs font-semibold shadow-sm transition-all"
             >
               <Users size={15} />
