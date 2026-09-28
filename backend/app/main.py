@@ -7,10 +7,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
+from datetime import datetime, timezone
 import pandas as pd
 
 from backend.app.db.config import Base, engine, get_db
@@ -32,6 +33,7 @@ from backend.app.auth.security import (
 from backend.app.services.prediction_service import PredictionService
 from backend.app.services.analytics_service import AnalyticsService
 from backend.app.services.chatbot_service import ChatbotService
+from backend.app.services.report_service import ReportService
 
 # Automatically create database tables if they do not exist
 Base.metadata.create_all(bind=engine)
@@ -404,6 +406,7 @@ def delete_prediction(
 # =====================================================================
 analytics_service = AnalyticsService()
 chatbot_service = ChatbotService()
+report_service = ReportService()
 
 @app.get("/api/analytics/system", response_model=AgriculturalAnalyticsOut, tags=["Analytics"])
 def get_system_analytics(
@@ -545,21 +548,65 @@ def list_admin_users(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Returns summary list of all registered platform users with associated resource counts."""
+    """Returns summary list of all registered platform users with associated resource counts and activity status."""
     users = db.query(User).order_by(User.created_at.desc()).all()
     out = []
     for u in users:
+        farms_cnt = len(u.farms)
+        crops_cnt = sum(len(f.crops) for f in u.farms)
+        preds_cnt = len(u.predictions)
+        status_text = "Active" if (preds_cnt > 0 or farms_cnt > 0) else "Registered"
+        
+        recent_act = None
+        if u.predictions:
+            latest_p = u.predictions[-1]
+            recent_act = f"Forecast: {latest_p.crop} ({latest_p.predicted_yield_kg:,.0f} kg/ac)"
+        elif u.farms:
+            latest_f = u.farms[-1]
+            recent_act = f"Farm: {latest_f.farm_name} ({latest_f.area} ac)"
+        else:
+            recent_act = "Account created"
+
         out.append(AdminUserSummaryOut(
             id=u.id,
             name=u.name,
             email=u.email,
             role=u.role,
             created_at=u.created_at,
-            farms_count=len(u.farms),
-            crops_count=sum(len(f.crops) for f in u.farms),
-            predictions_count=len(u.predictions)
+            farms_count=farms_cnt,
+            crops_count=crops_cnt,
+            predictions_count=preds_cnt,
+            status=status_text,
+            recent_activity=recent_act
         ))
     return out
+
+@app.get("/api/admin/farmers/report/pdf", tags=["Admin"])
+def download_farmer_report_pdf(
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generates a professional, high-fidelity PDF intelligence report of all
+    farmer records, farm holdings, crop entries, and yield predictions from real database data.
+    Restricted exclusively to Administrators.
+    """
+    try:
+        pdf_bytes = report_service.generate_farmer_records_pdf(db=db)
+        filename = f"YieldSense_AI_Farmer_Report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Type": "application/pdf"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate PDF report: {str(e)}"
+        )
 
 
 # =====================================================================
@@ -580,7 +627,9 @@ def chat_with_assistant(
         resp = chatbot_service.generate_response(
             query=req.message,
             context=req.context,
-            history=[h.model_dump() for h in req.history] if req.history else None
+            history=[h.model_dump() for h in req.history] if req.history else None,
+            user=current_user,
+            db=db
         )
 
         # Persist conversation if authenticated

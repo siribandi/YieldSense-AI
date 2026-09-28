@@ -16,3 +16,4 @@ seaborn==0.13.2
 ipykernel==6.29.4
 notebook==7.2.1
 joblib==1.4.2
+reportlab==5.0.1

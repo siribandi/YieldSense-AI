@@ -12,15 +12,21 @@ import {
   Landmark,
   Trees,
   BrainCircuit,
-  UserCheck
+  UserCheck,
+  FileDown,
+  Activity,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import api from '../api';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
+  const [downloadMsg, setDownloadMsg] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -38,6 +44,36 @@ export default function AdminUsers() {
     }
   };
 
+  const handleDownloadReport = async () => {
+    try {
+      setDownloading(true);
+      setDownloadMsg(null);
+      const res = await api.get('/admin/farmers/report/pdf', {
+        responseType: 'blob'
+      });
+
+      // Create blob link and trigger download
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      link.setAttribute('download', `YieldSense_AI_Farmer_Report_${dateStr}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setDownloadMsg({ type: 'success', text: 'Farmer Report PDF downloaded successfully!' });
+      setTimeout(() => setDownloadMsg(null), 5000);
+    } catch (err) {
+      console.error('Failed to download PDF report:', err);
+      setDownloadMsg({ type: 'error', text: 'Failed to generate PDF report. Please try again.' });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const filteredUsers = users.filter((u) => {
     const matchSearch =
       u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -45,6 +81,12 @@ export default function AdminUsers() {
     const matchRole = roleFilter === 'All' || u.role === roleFilter;
     return matchSearch && matchRole;
   });
+
+  // Calculate high-level summary KPIs
+  const totalFarmers = users.filter((u) => u.role === 'Farmer').length;
+  const totalFarms = users.reduce((acc, u) => acc + (u.farms_count || 0), 0);
+  const totalCrops = users.reduce((acc, u) => acc + (u.crops_count || 0), 0);
+  const totalPredictions = users.reduce((acc, u) => acc + (u.predictions_count || 0), 0);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -61,22 +103,93 @@ export default function AdminUsers() {
           <div>
             <div className="flex items-center gap-2 text-brand-600 font-semibold text-xs uppercase tracking-wider mb-1">
               <ShieldCheck size={16} />
-              <span>Platform Access Control</span>
+              <span>Administrator Governance</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-slate-800">User Management Directory 👥</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Farmer Records & User Directory 👥</h2>
             <p className="text-slate-500 text-sm mt-0.5">
-              Review and audit all registered farmers, agronomists, and system administrators.
+              Comprehensive registry of verified farmers, registered land holdings, logged crops, and yield forecasts.
             </p>
           </div>
         </div>
 
-        <button
-          onClick={fetchUsers}
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-semibold transition-all"
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <button
+            onClick={handleDownloadReport}
+            disabled={downloading}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 active:scale-95 text-white rounded-2xl text-xs font-bold shadow-md shadow-brand-600/20 transition-all disabled:opacity-50"
+            title="Download formatted PDF Audit Report"
+          >
+            <FileDown size={16} className={downloading ? 'animate-bounce' : ''} />
+            <span>{downloading ? 'Generating PDF...' : 'Download Report'}</span>
+          </button>
+
+          <button
+            onClick={fetchUsers}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-semibold transition-all"
+            title="Refresh database records"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Download Alert Notification */}
+      {downloadMsg && (
+        <div
+          className={`p-4 rounded-2xl border flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${
+            downloadMsg.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-red-50 text-red-800 border-red-200'
+          }`}
         >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          <span>Refresh Users</span>
-        </button>
+          {downloadMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+          <span>{downloadMsg.text}</span>
+        </div>
+      )}
+
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-[#e3ecd9] shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <UserCheck size={24} />
+          </div>
+          <div>
+            <div className="text-xl font-extrabold text-slate-800">{totalFarmers}</div>
+            <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Farmers</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-[#e3ecd9] shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <Landmark size={24} />
+          </div>
+          <div>
+            <div className="text-xl font-extrabold text-slate-800">{totalFarms}</div>
+            <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Farms</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-[#e3ecd9] shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+            <Trees size={24} />
+          </div>
+          <div>
+            <div className="text-xl font-extrabold text-slate-800">{totalCrops}</div>
+            <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Logged Crops</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-[#e3ecd9] shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <BrainCircuit size={24} />
+          </div>
+          <div>
+            <div className="text-xl font-extrabold text-slate-800">{totalPredictions}</div>
+            <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Yield Forecasts</div>
+          </div>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -87,13 +200,13 @@ export default function AdminUsers() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
+            placeholder="Search farmer name or email..."
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Role:</span>
+          <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Filter:</span>
           {['All', 'Farmer', 'Administrator'].map((r) => (
             <button
               key={r}
@@ -110,46 +223,49 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Farmer & User Records Table */}
       <div className="bg-white rounded-3xl border border-[#e3ecd9] shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex justify-center items-center py-20">
+          <div className="flex flex-col justify-center items-center py-20 gap-3">
             <RefreshCw className="animate-spin text-brand-500" size={28} />
+            <span className="text-xs text-slate-400 font-semibold">Loading real records from database...</span>
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="text-center py-16 text-slate-400 text-sm">
-            No users matching your search criteria.
+            No farmer records matching your criteria.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-600">
               <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider font-bold text-slate-400 border-b border-slate-100">
                 <tr>
-                  <th className="py-4 px-6">User ID</th>
-                  <th className="py-4 px-6">Name & Email</th>
-                  <th className="py-4 px-6">System Role</th>
-                  <th className="py-4 px-6">Farms Owned</th>
-                  <th className="py-4 px-6">Crops Logged</th>
-                  <th className="py-4 px-6">Predictions</th>
-                  <th className="py-4 px-6">Registered On</th>
+                  <th className="py-4 px-5">ID</th>
+                  <th className="py-4 px-5">Farmer Name & Email</th>
+                  <th className="py-4 px-5">Role</th>
+                  <th className="py-4 px-5 text-center">Farms</th>
+                  <th className="py-4 px-5 text-center">Crops</th>
+                  <th className="py-4 px-5 text-center">Predictions</th>
+                  <th className="py-4 px-5">Registration Date</th>
+                  <th className="py-4 px-5">Status & Activity</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.map((u) => {
                   const isAdmin = u.role === 'Administrator';
+                  const isActive = u.status === 'Active' || (u.predictions_count > 0 || u.farms_count > 0);
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-4 px-6 font-mono text-xs font-semibold text-slate-400">
+                      <td className="py-4 px-5 font-mono text-xs font-semibold text-slate-400">
                         #{u.id}
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-5">
                         <div className="font-bold text-slate-800">{u.name}</div>
                         <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                           <Mail size={12} />
                           <span>{u.email}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-5">
                         <span
                           className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${
                             isAdmin
@@ -161,17 +277,48 @@ export default function AdminUsers() {
                           <span>{u.role}</span>
                         </span>
                       </td>
-                      <td className="py-4 px-6 font-semibold text-slate-700">
-                        {u.farms_count} farms
+                      <td className="py-4 px-5 text-center font-semibold text-slate-700">
+                        <span className="inline-block px-2.5 py-0.5 bg-slate-100 rounded-lg text-xs">
+                          {u.farms_count}
+                        </span>
                       </td>
-                      <td className="py-4 px-6 font-semibold text-slate-700">
-                        {u.crops_count} crops
+                      <td className="py-4 px-5 text-center font-semibold text-slate-700">
+                        <span className="inline-block px-2.5 py-0.5 bg-slate-100 rounded-lg text-xs">
+                          {u.crops_count}
+                        </span>
                       </td>
-                      <td className="py-4 px-6 font-semibold text-slate-700">
-                        {u.predictions_count} runs
+                      <td className="py-4 px-5 text-center font-semibold text-slate-700">
+                        <span className="inline-block px-2.5 py-0.5 bg-brand-50 text-brand-700 font-bold rounded-lg text-xs">
+                          {u.predictions_count}
+                        </span>
                       </td>
-                      <td className="py-4 px-6 text-xs text-slate-500 font-mono">
-                        {new Date(u.created_at).toLocaleDateString()}
+                      <td className="py-4 px-5 text-xs text-slate-500 font-mono">
+                        {new Date(u.created_at).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </td>
+                      <td className="py-4 px-5">
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={`inline-flex items-center gap-1 text-[11px] font-bold ${
+                              isActive ? 'text-emerald-600' : 'text-slate-400'
+                            }`}
+                          >
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
+                              }`}
+                            />
+                            {isActive ? 'Active' : 'Registered'}
+                          </span>
+                          {u.recent_activity && (
+                            <span className="text-[11px] text-slate-400 truncate max-w-[160px]" title={u.recent_activity}>
+                              {u.recent_activity}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

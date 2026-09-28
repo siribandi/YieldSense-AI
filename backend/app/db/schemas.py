@@ -201,6 +201,8 @@ class AdminUserSummaryOut(BaseModel):
     farms_count: int
     crops_count: int
     predictions_count: int
+    status: Optional[str] = "Registered"
+    recent_activity: Optional[str] = None
 
     class Config:
         from_attributes = True

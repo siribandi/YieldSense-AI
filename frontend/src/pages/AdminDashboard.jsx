@@ -67,7 +67,7 @@ export default function AdminDashboard() {
               className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-2xl text-xs font-semibold shadow-sm transition-all"
             >
               <Users size={15} />
-              <span>Manage Users</span>
+              <span>Farmer Records & Reports</span>
             </Link>
             <Link
               to="/analytics"
