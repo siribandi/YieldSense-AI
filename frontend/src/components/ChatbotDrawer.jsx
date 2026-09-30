@@ -17,11 +17,14 @@ import { Link } from 'react-router-dom';
 import api from '../api';
 
 const QUICK_PROMPTS = [
-  '🌾 Best fertilizer for Soybean?',
-  '🧪 What is the ideal soil pH for Wheat?',
-  '🌧️ How does rainfall affect crop yield?',
-  '🧠 Explain the ML prediction model',
-  '🌱 How to protect cotton from heat stress?',
+  '💻 What is Python?',
+  '🌾 Best soil for rice?',
+  '🔬 Explain photosynthesis',
+  '☕ Java program for factorial',
+  '💾 RAM vs ROM difference',
+  '🧠 Explain ML prediction model',
+  '💼 Help me prepare for an interview',
+  '🌱 Best fertilizer for Soybean?',
 ];
 
 export default function ChatbotDrawer() {
@@ -29,11 +32,12 @@ export default function ChatbotDrawer() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      message: 'Hello! I am **AgriSense AI**, your agricultural intelligence assistant. Ask me anything about crop cultivation, soil pH, N-P-K fertilizers, weather insights, or ML predictions!',
+      message: 'Hello! I am **AgriSense AI**, your general-purpose and agricultural AI assistant. You can ask me anything across programming, science, mathematics, technology, career, everyday questions, or YieldSense AI crop and yield intelligence!',
       suggestions: [
-        'What fertilizer is best for Soybean?',
-        'What is the optimal soil pH for crops?',
-        'Explain the ML prediction model accuracy',
+        'What is Python?',
+        'Explain photosynthesis',
+        'What is the best soil for rice?',
+        'Write a Java program for factorial',
       ],
       created_at: new Date().toISOString(),
     },
@@ -68,7 +72,7 @@ export default function ChatbotDrawer() {
     setLoading(true);
 
     try {
-      const historyPayload = messages.slice(-4).map((m) => ({
+      const historyPayload = messages.slice(-6).map((m) => ({
         role: m.role,
         message: m.message,
       }));
@@ -93,8 +97,8 @@ export default function ChatbotDrawer() {
         ...prev,
         {
           role: 'assistant',
-          message: '⚠️ Sorry, I encountered a temporary issue connecting to the knowledge base. Please check if the server is running and try again.',
-          suggestions: ['Explain the ML prediction model', 'What fertilizer is best for Soybean?'],
+          message: '⚠️ Sorry, I encountered a temporary issue connecting to the AI service. Please ensure the backend server is running and try again.',
+          suggestions: ['What is Python?', 'What is the best soil for rice?', 'Explain the ML prediction model'],
           created_at: new Date().toISOString(),
         },
       ]);
@@ -113,8 +117,8 @@ export default function ChatbotDrawer() {
     setMessages([
       {
         role: 'assistant',
-        message: 'Chat history cleared. How can I assist your farming operations today?',
-        suggestions: QUICK_PROMPTS.slice(0, 3),
+        message: 'Chat session reset. What question or topic would you like to explore?',
+        suggestions: QUICK_PROMPTS.slice(0, 4),
         created_at: new Date().toISOString(),
       },
     ]);
@@ -138,7 +142,7 @@ export default function ChatbotDrawer() {
 
       {/* Floating Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[92vw] sm:w-[420px] h-[580px] max-h-[85vh] bg-white rounded-3xl border border-[#e3ecd9] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-6 right-6 z-50 w-[92vw] sm:w-[440px] h-[600px] max-h-[85vh] bg-white rounded-3xl border border-[#e3ecd9] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
           {/* Header */}
           <div className="px-5 py-4 bg-gradient-to-r from-brand-600 via-brand-700 to-emerald-700 text-white flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
@@ -148,9 +152,9 @@ export default function ChatbotDrawer() {
               <div>
                 <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
                   <span>AgriSense AI Assistant</span>
-                  <span className="px-1.5 py-0.5 bg-white/20 text-[10px] rounded-full font-medium">v3.0</span>
+                  <span className="px-1.5 py-0.5 bg-white/20 text-[10px] rounded-full font-medium">General AI</span>
                 </h3>
-                <p className="text-[11px] text-emerald-100">Agricultural & Yield Intelligence</p>
+                <p className="text-[11px] text-emerald-100">AI Intelligence & Agronomic Guidance</p>
               </div>
             </div>
 
@@ -187,12 +191,12 @@ export default function ChatbotDrawer() {
               return (
                 <div key={idx} className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
                   {!isUser && (
-                    <div className="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
                       <Bot size={15} />
                     </div>
                   )}
 
-                  <div className={`max-w-[82%] space-y-2`}>
+                  <div className={`max-w-[84%] space-y-2`}>
                     <div
                       className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                         isUser
@@ -205,10 +209,11 @@ export default function ChatbotDrawer() {
                       </div>
 
                       {!isUser && (
-                        <div className="flex items-center justify-end gap-2 mt-2 pt-1.5 border-t border-slate-100 text-[10px] text-slate-400">
+                        <div className="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100 text-[10px] text-slate-400">
+                          <span>{msg.category ? msg.category.replace('_', ' ') : 'AgriSense AI'}</span>
                           <button
                             onClick={() => handleCopy(msg.message, idx)}
-                            className="flex items-center gap-1 hover:text-slate-600 transition-all"
+                            className="flex items-center gap-1 hover:text-slate-600 transition-all font-medium"
                           >
                             {copiedIdx === idx ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                             <span>{copiedIdx === idx ? 'Copied' : 'Copy'}</span>
@@ -245,7 +250,7 @@ export default function ChatbotDrawer() {
             {loading && (
               <div className="flex items-center gap-2 text-xs text-slate-400 p-2">
                 <RefreshCw size={14} className="animate-spin text-brand-600" />
-                <span>AgriSense is consulting agronomic models...</span>
+                <span>AgriSense AI is generating response...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -256,7 +261,7 @@ export default function ChatbotDrawer() {
             {QUICK_PROMPTS.map((p, i) => (
               <button
                 key={i}
-                onClick={() => handleSend(p)}
+                onClick={() => handleSend(p.replace(/^[^\w\s]+\s*/, ''))}
                 className="whitespace-nowrap px-2.5 py-1 bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 text-slate-600 hover:text-brand-700 text-[11px] font-medium rounded-full transition-all"
               >
                 {p}
@@ -276,7 +281,7 @@ export default function ChatbotDrawer() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about crops, soil pH, N-P-K, weather..."
+              placeholder="Ask anything: Python, Java, Photosynthesis, Crops, Soil pH, ML..."
               className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
             />
             <button

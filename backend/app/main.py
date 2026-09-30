@@ -35,8 +35,20 @@ from backend.app.services.analytics_service import AnalyticsService
 from backend.app.services.chatbot_service import ChatbotService
 from backend.app.services.report_service import ReportService
 
+from backend.app.db.seed import seed_initial_accounts
+
 # Automatically create database tables if they do not exist
 Base.metadata.create_all(bind=engine)
+try:
+    seed_initial_accounts()
+except Exception as _e:
+    print(f"Startup DB seed check: {_e}")
+
+def is_admin_user(user: Optional[User]) -> bool:
+    """Checks if the user has Administrator role case-insensitively."""
+    if not user or not user.role:
+        return False
+    return user.role.strip().lower() in ["administrator", "admin"]
 
 app = FastAPI(
     title="YieldSense AI API",
@@ -47,13 +59,32 @@ app = FastAPI(
 # Enable CORS for the React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust for production
+    allow_origins=[
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:3001",
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition", "Content-Type", "Content-Length"],
 )
 
-# --- Health check endpoint ---
+# --- Root & Health check endpoints ---
+@app.get("/", tags=["Root"])
+def root():
+    return {
+        "name": "YieldSense AI API",
+        "version": "1.0.0",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/api/health"
+    }
+
 @app.get("/api/health", tags=["Health"])
 def health_check(db: Session = Depends(get_db)):
     try:
@@ -94,13 +125,16 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
             detail="Email already registered."
         )
     
+    # Normalize role
+    normalized_role = "Administrator" if user_in.role.strip().lower() in ["administrator", "admin"] else "Farmer"
+    
     # Hash password and create user
     hashed_pwd = get_password_hash(user_in.password)
     db_user = User(
         name=user_in.name,
         email=user_in.email,
         password_hash=hashed_pwd,
-        role=user_in.role
+        role=normalized_role
     )
     db.add(db_user)
     db.commit()
@@ -117,14 +151,15 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Incorrect email or password."
         )
     
+    user_role = "Administrator" if is_admin_user(user) else "Farmer"
     # Generate token
-    token_data = {"sub": user.email, "role": user.role}
+    token_data = {"sub": user.email, "role": user_role}
     token_str = create_access_token(data=token_data)
     
     return Token(
         access_token=token_str,
         token_type="bearer",
-        role=user.role,
+        role=user_role,
         name=user.name
     )
 
@@ -149,7 +184,7 @@ def create_farm(farm_in: FarmCreate, current_user: User = Depends(get_current_us
 
 @app.get("/api/farms", response_model=List[FarmOut], tags=["Farms"])
 def list_farms(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role == "Administrator":
+    if is_admin_user(current_user):
         # Admins can view all farms
         return db.query(Farm).all()
     else:
@@ -166,7 +201,7 @@ def get_farm(id: int, current_user: User = Depends(get_current_user), db: Sessio
         )
     
     # Access control: Farmer must own the farm
-    if current_user.role != "Administrator" and farm.user_id != current_user.id:
+    if not is_admin_user(current_user) and farm.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied to access this farm."
@@ -184,7 +219,7 @@ def create_crop(crop_in: CropCreate, current_user: User = Depends(get_current_us
             detail="Farm associated with crop not found."
         )
     
-    if current_user.role != "Administrator" and farm.user_id != current_user.id:
+    if not is_admin_user(current_user) and farm.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied. You do not own the farm associated with this crop."
@@ -205,7 +240,7 @@ def create_crop(crop_in: CropCreate, current_user: User = Depends(get_current_us
 
 @app.get("/api/crops", response_model=List[CropOut], tags=["Crops"])
 def list_crops(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role == "Administrator":
+    if is_admin_user(current_user):
         return db.query(Crop).all()
     else:
         # Join with Farm to restrict to user's farms
@@ -222,7 +257,7 @@ def get_crop(id: int, current_user: User = Depends(get_current_user), db: Sessio
     
     # Access control: Farmer must own the farm associated with the crop
     farm = db.query(Farm).filter(Farm.id == crop.farm_id).first()
-    if current_user.role != "Administrator" and farm.user_id != current_user.id:
+    if not is_admin_user(current_user) and farm.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied to access this crop record."
@@ -313,7 +348,7 @@ def create_saved_prediction(
         farm = db.query(Farm).filter(Farm.id == pred_in.farm_id).first()
         if not farm:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Associated farm not found.")
-        if current_user.role != "Administrator" and farm.user_id != current_user.id:
+        if not is_admin_user(current_user) and farm.user_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied for selected farm.")
 
     if pred_in.crop_id:
@@ -362,7 +397,7 @@ def list_predictions(
     - Farmers: restricted strictly to their own predictions.
     - Administrators: oversight access to view all predictions.
     """
-    if current_user.role == "Administrator":
+    if is_admin_user(current_user):
         return db.query(Prediction).order_by(Prediction.created_at.desc()).all()
     else:
         return db.query(Prediction).filter(Prediction.user_id == current_user.id).order_by(Prediction.created_at.desc()).all()
@@ -378,7 +413,7 @@ def get_prediction(
     if not pred:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction record not found.")
 
-    if current_user.role != "Administrator" and pred.user_id != current_user.id:
+    if not is_admin_user(current_user) and pred.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied to access this prediction.")
     return pred
 
@@ -393,7 +428,7 @@ def delete_prediction(
     if not pred:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction record not found.")
 
-    if current_user.role != "Administrator" and pred.user_id != current_user.id:
+    if not is_admin_user(current_user) and pred.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied to delete this prediction.")
 
     db.delete(pred)
@@ -471,9 +506,10 @@ def get_admin_stats(
     state-wise farm distributions, and real-time activity stream.
     """
     try:
-        total_users = db.query(User).count()
-        total_farmers = db.query(User).filter(User.role == "Farmer").count()
-        total_admins = db.query(User).filter(User.role == "Administrator").count()
+        all_users = db.query(User).all()
+        total_users = len(all_users)
+        total_farmers = sum(1 for u in all_users if not is_admin_user(u))
+        total_admins = sum(1 for u in all_users if is_admin_user(u))
         total_farms = db.query(Farm).count()
         total_crops = db.query(Crop).count()
         total_preds = db.query(Prediction).count()
@@ -583,6 +619,8 @@ def list_admin_users(
 
 @app.get("/api/admin/farmers/report", tags=["Admin"])
 @app.get("/api/admin/farmers/report/pdf", tags=["Admin"])
+@app.get("/api/api/admin/farmers/report", tags=["Admin"])
+@app.get("/api/admin/farmers/download-report", tags=["Admin"])
 def download_farmer_report_pdf(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db)
@@ -625,27 +663,46 @@ def chat_with_assistant(
     """
     try:
         import json
+        hist_list = None
+        if req.history:
+            hist_list = []
+            for h in req.history:
+                if isinstance(h, dict):
+                    hist_list.append(h)
+                elif hasattr(h, "model_dump"):
+                    hist_list.append(h.model_dump())
+                elif hasattr(h, "__dict__"):
+                    hist_list.append(h.__dict__)
+
         resp = chatbot_service.generate_response(
             query=req.message,
             context=req.context,
-            history=[h.model_dump() for h in req.history] if req.history else None,
+            history=hist_list,
             user=current_user,
             db=db
         )
 
         # Persist conversation if authenticated
         if current_user:
+            def safe_db_str(text: Optional[str]) -> str:
+                if not text:
+                    return ""
+                try:
+                    return text.encode("cp1252", errors="ignore").decode("cp1252")
+                except Exception:
+                    return text.encode("ascii", errors="ignore").decode("ascii")
+
             user_msg = ChatMessage(
                 user_id=current_user.id,
                 role="user",
-                message=req.message
+                message=safe_db_str(req.message)
             )
             bot_msg = ChatMessage(
                 user_id=current_user.id,
                 role="assistant",
-                message=resp["reply"],
-                category=resp.get("category"),
-                suggestions=json.dumps(resp.get("suggestions", []))
+                message=safe_db_str(resp["reply"]),
+                category=safe_db_str(resp.get("category")),
+                suggestions=safe_db_str(json.dumps(resp.get("suggestions", [])))
             )
             db.add(user_msg)
             db.add(bot_msg)

@@ -320,13 +320,15 @@ class RiskAnalysisOut(BaseModel):
 
 # --- Milestone 3: Agricultural AI Chatbot Schemas ---
 class ChatMessageItem(BaseModel):
-    role: str  # "user" or "assistant"
-    message: str
+    model_config = ConfigDict(extra="ignore")
+    role: str = "user"
+    message: str = ""
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=2000)
-    context: Optional[Dict[str, Any]] = None  # e.g., current crop, soil, weather if asked from a prediction page
-    history: Optional[List[ChatMessageItem]] = None
+    model_config = ConfigDict(extra="ignore")
+    message: str = Field(..., min_length=1, max_length=5000)
+    context: Optional[Dict[str, Any]] = None
+    history: Optional[List[Any]] = None
 
 class ChatResponse(BaseModel):
     reply: str

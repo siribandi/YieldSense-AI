@@ -16,7 +16,9 @@ import {
   FileDown,
   Activity,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  ExternalLink
 } from 'lucide-react';
 import api from '../api';
 
@@ -27,6 +29,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [downloadMsg, setDownloadMsg] = useState(null);
+  const [lastReportUrl, setLastReportUrl] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -47,27 +50,58 @@ export default function AdminUsers() {
   const handleDownloadReport = async () => {
     try {
       setDownloading(true);
-      setDownloadMsg({ type: 'info', text: 'Generating report...' });
-      const res = await api.get('/api/admin/farmers/report', {
+      setDownloadMsg({ type: 'info', text: 'Generating high-fidelity PDF intelligence report...' });
+      const res = await api.get('/admin/farmers/report', {
         responseType: 'blob'
       });
 
-      // Create blob link and trigger download
+      // Create blob with explicit application/pdf MIME type
       const blob = new Blob([res.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
+      setLastReportUrl(url);
+
+      // Create download anchor and trigger
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', 'YieldSense_AI_Farmer_Report.pdf');
+      link.setAttribute('target', '_blank');
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
 
-      setDownloadMsg({ type: 'success', text: 'Report downloaded successfully.' });
-      setTimeout(() => setDownloadMsg(null), 6000);
+      // Retain blob URL active for 5 minutes so download finishes and user can view
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 300000);
+
+      setDownloadMsg({
+        type: 'success',
+        text: 'Report downloaded as YieldSense_AI_Farmer_Report.pdf.',
+        url: url
+      });
+      setTimeout(() => setDownloadMsg(null), 12000);
     } catch (err) {
       console.error('Failed to download PDF report:', err);
-      setDownloadMsg({ type: 'error', text: 'Unable to generate report.' });
+      setDownloadMsg({ type: 'error', text: 'Unable to generate PDF report from server.' });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleViewPdfInTab = async () => {
+    try {
+      if (lastReportUrl) {
+        window.open(lastReportUrl, '_blank');
+        return;
+      }
+      setDownloading(true);
+      const res = await api.get('/admin/farmers/report', { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      setLastReportUrl(url);
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error('Failed to open PDF:', err);
     } finally {
       setDownloading(false);
     }
@@ -120,7 +154,18 @@ export default function AdminUsers() {
             title="Download formatted PDF Farmer Report"
           >
             <FileDown size={16} className={downloading ? 'animate-bounce' : ''} />
-            <span>{downloading ? 'Generating report...' : 'Download Report'}</span>
+            <span>{downloading ? 'Generating...' : 'Download Report'}</span>
+          </button>
+
+          <button
+            id="view-pdf-tab-btn"
+            onClick={handleViewPdfInTab}
+            disabled={downloading}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white rounded-2xl text-xs font-bold transition-all shadow-sm"
+            title="View formatted PDF Report in a new browser tab"
+          >
+            <Eye size={14} />
+            <span className="hidden sm:inline">View PDF</span>
           </button>
 
           <button
@@ -139,7 +184,7 @@ export default function AdminUsers() {
       {downloadMsg && (
         <div
           id="report-status-alert"
-          className={`p-4 rounded-2xl border flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${
+          className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${
             downloadMsg.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
               : downloadMsg.type === 'info'
@@ -147,14 +192,26 @@ export default function AdminUsers() {
               : 'bg-red-50 text-red-800 border-red-200'
           }`}
         >
-          {downloadMsg.type === 'success' ? (
-            <CheckCircle2 size={16} />
-          ) : downloadMsg.type === 'info' ? (
-            <RefreshCw size={16} className="animate-spin" />
-          ) : (
-            <AlertCircle size={16} />
+          <div className="flex items-center gap-3">
+            {downloadMsg.type === 'success' ? (
+              <CheckCircle2 size={16} />
+            ) : downloadMsg.type === 'info' ? (
+              <RefreshCw size={16} className="animate-spin" />
+            ) : (
+              <AlertCircle size={16} />
+            )}
+            <span>{downloadMsg.text}</span>
+          </div>
+
+          {downloadMsg.url && (
+            <button
+              onClick={() => window.open(downloadMsg.url, '_blank')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm"
+            >
+              <ExternalLink size={12} />
+              <span>Open PDF in Tab</span>
+            </button>
           )}
-          <span>{downloadMsg.text}</span>
         </div>
       )}
 

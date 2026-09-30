@@ -9,41 +9,39 @@ import {
   Copy,
   Check,
   Sprout,
-  FlaskConical,
-  Droplets,
-  BrainCircuit,
-  HelpCircle,
+  Code2,
+  Atom,
+  Briefcase,
   ArrowRight,
-  Lightbulb,
-  ShieldCheck,
-  Layers
+  BrainCircuit,
+  MessageSquare
 } from 'lucide-react';
 import api from '../api';
 
 const TOPIC_CARDS = [
   {
+    icon: Code2,
+    title: 'Programming & Tech',
+    color: 'from-blue-500 to-indigo-700',
+    prompt: 'What is Python and how does it compare to Java? Write a simple example.',
+  },
+  {
+    icon: Atom,
+    title: 'Science & Explanations',
+    color: 'from-cyan-500 to-teal-700',
+    prompt: 'Explain photosynthesis simply: chemical equation, light reactions, and Calvin cycle.',
+  },
+  {
     icon: Sprout,
-    title: 'Crop Cultivation Guides',
+    title: 'Crop & Soil Intelligence',
     color: 'from-emerald-500 to-emerald-700',
-    prompt: 'What are the ideal growing conditions and fertilizer requirements for Soybean?',
+    prompt: 'What is the best soil for Rice and how should soil pH be managed?',
   },
   {
-    icon: FlaskConical,
-    title: 'Soil pH & Chemistry',
-    color: 'from-blue-500 to-blue-700',
-    prompt: 'How do I manage acidic soil (pH < 6.0) with agricultural lime?',
-  },
-  {
-    icon: Droplets,
-    title: 'Moisture & Weather',
-    color: 'from-cyan-500 to-cyan-700',
-    prompt: 'How does seasonal rainfall affect crop productivity and when is irrigation needed?',
-  },
-  {
-    icon: BrainCircuit,
-    title: 'ML Prediction Model',
+    icon: Briefcase,
+    title: 'Career & Writing Support',
     color: 'from-purple-500 to-purple-700',
-    prompt: 'Explain the Linear Regression model accuracy (MAE, RMSE, R²) used in YieldSense AI.',
+    prompt: 'Help me prepare for a technical interview using the STAR method with examples.',
   },
 ];
 
@@ -78,11 +76,13 @@ export default function ChatbotPage() {
         setMessages([
           {
             role: 'assistant',
-            message: '🌾 **Welcome to AgriSense AI!**\n\nI am your agricultural intelligence assistant trained on the YieldSense AI dataset and agronomic research. I can guide you on:\n- **Crop-specific cultivation** (12 crops including Soybean, Wheat, Rice, Cotton)\n- **Soil pH management** and correcting nutrient imbalances\n- **N-P-K fertilizer schedules** (DAP, Urea, NPK, Organic Compost)\n- **Meteorological insights** and mitigating water/heat stress\n- **Machine Learning model specs** and yield forecasting mechanics\n\nSelect a topic above or type your farming question below!',
+            message: '🌾 **Welcome to AgriSense AI Assistant!**\n\nI am your versatile, intelligent conversational AI. You can ask me anything across:\n- **Programming & Technology**: Python, Java factorial, RAM vs ROM, APIs, SQL, algorithms\n- **Science & Education**: Photosynthesis, physics, mathematics, chemistry, biology\n- **Career & Writing**: Interview preparation, resumes, Instagram captions, summaries\n- **Agricultural Intelligence**: 12 crop guides, soil pH management, N-P-K schedules, and YieldSense ML model specs\n- **Personalized Data**: Your registered farms, crop plantings, and prediction history\n\nSelect a topic above or type your question below!',
             suggestions: [
-              'What fertilizer is best for Soybean?',
-              'What is the optimal soil pH for Wheat?',
-              'Explain the ML prediction model specs',
+              'What is Python?',
+              'Explain photosynthesis',
+              'What is the best soil for rice?',
+              'Write a Java program for factorial',
+              'Explain the ML prediction model'
             ],
             created_at: new Date().toISOString(),
           },
@@ -93,8 +93,8 @@ export default function ChatbotPage() {
       setMessages([
         {
           role: 'assistant',
-          message: '🌾 **Welcome to AgriSense AI!** How can I assist your farming operations today?',
-          suggestions: ['Best fertilizer for Soybean?', 'Optimal soil pH for crops?'],
+          message: '🌾 **Welcome to AgriSense AI!** How can I assist you today?',
+          suggestions: ['What is Python?', 'What is the best soil for rice?', 'Explain photosynthesis'],
           created_at: new Date().toISOString(),
         },
       ]);
@@ -118,7 +118,7 @@ export default function ChatbotPage() {
     setLoading(true);
 
     try {
-      const historyPayload = messages.slice(-4).map((m) => ({
+      const historyPayload = messages.slice(-6).map((m) => ({
         role: m.role,
         message: m.message,
       }));
@@ -143,8 +143,8 @@ export default function ChatbotPage() {
         ...prev,
         {
           role: 'assistant',
-          message: '⚠️ Sorry, I encountered an issue retrieving agronomic information. Please ensure the backend server is running.',
-          suggestions: ['What is the best fertilizer for Soybean?', 'Explain the ML prediction model'],
+          message: '⚠️ Sorry, I encountered an issue connecting to the AI service. Please ensure the backend server is running.',
+          suggestions: ['What is Python?', 'What is the best soil for rice?', 'Explain the ML prediction model'],
           created_at: new Date().toISOString(),
         },
       ]);
@@ -169,11 +169,12 @@ export default function ChatbotPage() {
       setMessages([
         {
           role: 'assistant',
-          message: 'Conversation history cleared. Ask me any agricultural or yield prediction question to get started!',
+          message: 'Conversation history cleared. Ask me any question on programming, science, mathematics, career, or agriculture to get started!',
           suggestions: [
-            'What fertilizer is best for Soybean?',
-            'What is the optimal soil pH for crops?',
-            'Explain the ML prediction model specs',
+            'What is Python?',
+            'Explain photosynthesis',
+            'What is the best soil for rice?',
+            'Write a Java program for factorial'
           ],
           created_at: new Date().toISOString(),
         },
@@ -189,11 +190,11 @@ export default function ChatbotPage() {
         <div className="relative">
           <div className="flex items-center gap-2 text-brand-600 font-semibold text-xs uppercase tracking-wider mb-1">
             <Sparkles size={16} />
-            <span>YieldSense AI Knowledge Engine</span>
+            <span>YieldSense AI Intelligence Engine</span>
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-slate-800">AgriSense AI Assistant 🤖</h2>
           <p className="text-slate-500 text-sm mt-1">
-            Ask questions about crop nutrition, soil chemistry, weather advisories, and ML yield forecasting.
+            General AI assistant for programming, science, mathematics, career, and domain-grounded agricultural forecasting.
           </p>
         </div>
 
@@ -258,7 +259,7 @@ export default function ChatbotPage() {
                     </div>
                   )}
 
-                  <div className="max-w-[85%] sm:max-w-[75%] space-y-2.5">
+                  <div className="max-w-[85%] sm:max-w-[78%] space-y-2.5">
                     <div
                       className={`p-5 rounded-3xl text-sm leading-relaxed ${
                         isUser
@@ -315,7 +316,7 @@ export default function ChatbotPage() {
           {loading && (
             <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 w-fit text-xs text-slate-500 shadow-sm animate-pulse">
               <RefreshCw size={16} className="animate-spin text-brand-600" />
-              <span>AgriSense AI is generating verified agronomic guidance...</span>
+              <span>AgriSense AI is generating response...</span>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -333,7 +334,7 @@ export default function ChatbotPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about crop varieties, soil pH, N-P-K ratios, weather impact, or ML accuracy..."
+            placeholder="Ask anything: Python, Java, Photosynthesis, Crops, Soil pH, ML prediction model..."
             className="flex-1 px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
           />
           <button
